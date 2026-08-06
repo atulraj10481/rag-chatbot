@@ -1,23 +1,48 @@
 import Link from "next/link";
 import { ReactNode } from "react";
+import { createClient } from "@/lib/supabase/server";
+import { redirect } from "next/navigation";
+import { Button } from "@/components/ui/button";
+import { Sidebar } from "@/components/admin/sidebar";
 
-export default function AdminLayout({ children }: { children: ReactNode }) {
+export default async function AdminLayout({ children }: { children: ReactNode }) {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+
+  const handleSignOut = async () => {
+    'use server';
+    const supabase = await createClient();
+    await supabase.auth.signOut();
+    redirect('/login');
+  };
+
   return (
-    <div className="flex h-screen w-full bg-slate-50 text-slate-900">
-      <aside className="w-64 flex flex-col border-r bg-white">
-        <div className="p-4 border-b">
-          <h2 className="text-lg font-semibold tracking-tight">RAG Chatbot</h2>
-          <p className="text-sm text-slate-500">Admin Dashboard</p>
+    <div className="flex min-h-screen w-full bg-background relative selection:bg-primary/30">
+      <Sidebar />
+      
+      <main className="flex-1 ml-64 min-h-screen flex flex-col relative z-0 overflow-x-hidden">
+        {/* Subtle background glow effect */}
+        <div className="fixed top-[-20%] left-[-10%] w-[50%] h-[50%] rounded-full bg-indigo-500/10 blur-[120px] pointer-events-none" />
+        <div className="fixed bottom-[-20%] right-[-10%] w-[50%] h-[50%] rounded-full bg-purple-500/10 blur-[120px] pointer-events-none" />
+        
+        {/* Top Header */}
+        <header className="h-16 w-full flex items-center justify-end px-8 border-b border-white/5 glass sticky top-0 z-30">
+          {user && (
+            <div className="flex items-center gap-4">
+              <span className="text-sm font-medium text-slate-400">{user.email}</span>
+              <form action={handleSignOut}>
+                <Button type="submit" variant="ghost" size="sm" className="text-red-400 hover:text-red-300 hover:bg-red-500/10 rounded-full px-4 transition-colors">
+                  Sign Out
+                </Button>
+              </form>
+            </div>
+          )}
+        </header>
+
+        {/* Main Content Area */}
+        <div className="p-8 relative z-10">
+          {children}
         </div>
-        <nav className="flex-1 p-4 space-y-2">
-          <Link href="/dashboard" className="block px-3 py-2 text-sm font-medium rounded-md hover:bg-slate-100">Overview</Link>
-          <Link href="/dashboard/documents" className="block px-3 py-2 text-sm font-medium rounded-md hover:bg-slate-100">Documents</Link>
-          <Link href="/dashboard/queries" className="block px-3 py-2 text-sm font-medium rounded-md hover:bg-slate-100">Query Logs</Link>
-          <Link href="/dashboard/settings" className="block px-3 py-2 text-sm font-medium rounded-md hover:bg-slate-100">Settings</Link>
-        </nav>
-      </aside>
-      <main className="flex-1 overflow-auto">
-        {children}
       </main>
     </div>
   );

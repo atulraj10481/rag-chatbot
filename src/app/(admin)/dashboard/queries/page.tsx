@@ -1,11 +1,23 @@
+import QueryLogTable from '@/components/admin/query-log-table';
+import { Database } from 'lucide-react';
+
 export default function QueriesPage() {
   return (
-    <div className="p-8">
-      <div className="flex items-center justify-between mb-8">
-        <h1 className="text-3xl font-bold tracking-tight">Query Logs</h1>
-        <span className="px-3 py-1 text-xs font-semibold bg-blue-100 text-blue-800 rounded-full">Phase 5</span>
+    <div className="space-y-8 max-w-6xl">
+      <div className="flex items-start justify-between">
+        <div>
+          <h1 className="text-2xl font-bold tracking-tight text-white">Query Logs & Monitoring</h1>
+          <p className="text-sm text-slate-500 mt-1">
+            Monitor real-time visitor questions, answers, and unanswered queries with low vector scores.
+          </p>
+        </div>
+        <span className="text-xs font-medium text-purple-400 bg-purple-400/10 border border-purple-400/20 rounded-full px-3 py-1.5 flex items-center gap-1.5">
+          <Database className="h-3 w-3" />
+          Phase 5 · Monitoring
+        </span>
       </div>
-      <p className="text-slate-500">Query history and unanswered questions table will be built here.</p>
+
+      <QueryLogTable />
     </div>
   );
 }

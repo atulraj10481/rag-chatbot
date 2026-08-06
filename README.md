@@ -1,36 +1,95 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# RAG Chatbot over Company Docs 🤖📚
 
-## Getting Started
+> **Productized Service**: Single-tenant, deploy-per-customer RAG chatbot that answers questions based on internal company documentation with precise source citations.
 
-First, run the development server:
+---
+
+## 💎 Business Model & Pricing
+
+| Item | Specification |
+|------|--------------|
+| **Target Customer** | SMBs & Mid-Market Companies (20–500 employees) |
+| **Pricing Tier** | **$1,000–$5,000 one-time setup fee** + **$100–$300/month retainer** |
+| **Operating Cost** | ~$5–$20/month per deployment (OpenRouter + free tiers) |
+| **Profit Margin** | **90%+** recurring monthly margin |
+
+---
+
+## ⚡ Quick Start & Deployment Guide (48-Hour Onboarding)
+
+### 1. Database Setup (Supabase)
+1. Create a new project on [Supabase](https://supabase.com).
+2. Go to **SQL Editor** in your Supabase dashboard.
+3. Paste the contents of `supabase/migrations/001_initial_schema.sql` and run the script.
+4. Copy your **Project URL**, **Anon Key**, and **Service Role Key** from `Settings -> API`.
+
+### 2. Environment Variables Configuration
+Copy `.env.example` to `.env.local` and fill in your credentials:
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+# Supabase
+NEXT_PUBLIC_SUPABASE_URL=https://xxxx.supabase.co
+NEXT_PUBLIC_SUPABASE_ANON_KEY=eyJ...
+SUPABASE_SERVICE_ROLE_KEY=eyJ...
+
+# OpenRouter (Single API key for LLM + Embeddings)
+OPENROUTER_API_KEY=sk-or-v1-...
+
+# Cloudflare R2 (Object Storage for original PDFs)
+R2_ENDPOINT=https://xxxx.r2.cloudflarestorage.com
+R2_ACCESS_KEY_ID=...
+R2_SECRET_ACCESS_KEY=...
+R2_BUCKET_NAME=rag-chatbot-docs
+R2_PUBLIC_URL=https://pub-xxxx.r2.dev
+
+# Notion Integration (Optional)
+NOTION_CLIENT_ID=...
+NOTION_CLIENT_SECRET=...
+NOTION_REDIRECT_URI=http://localhost:3000/api/auth/notion/callback
+
+# App Configuration
+NEXT_PUBLIC_APP_URL=http://localhost:3000
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+### 3. Local Development
+```bash
+npm run dev
+```
+Open [http://localhost:3000](http://localhost:3000) in your browser.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+---
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## 🌐 Delivery Models
 
-## Learn More
+### Mode 1: Standalone Page
+- Accessible at `/chat`
+- Full-page chat application for customer subdomains (e.g., `docs.acme.com`).
 
-To learn more about Next.js, take a look at the following resources:
+### Mode 2: Embeddable Floating Widget
+Add this single `<script>` tag to any customer website HTML:
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+```html
+<script 
+  src="https://your-chatbot-domain.com/embed.js"
+  data-primary-color="#3b82f6"
+  data-title="Acme Support Assistant"
+></script>
+```
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+### Mode 3: Headless API (OpenAI-Compatible)
+Endpoint: `POST /api/v1/chat`
 
-## Deploy on Vercel
+```json
+{
+  "messages": [
+    { "role": "user", "content": "What is our remote work policy?" }
+  ],
+  "stream": true
+}
+```
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+---
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+## 🚀 One-Click Customer Deployment (Vercel)
+
+[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https://github.com/your-username/rag-chatbot&env=NEXT_PUBLIC_SUPABASE_URL,NEXT_PUBLIC_SUPABASE_ANON_KEY,SUPABASE_SERVICE_ROLE_KEY,OPENROUTER_API_KEY,R2_ENDPOINT,R2_ACCESS_KEY_ID,R2_SECRET_ACCESS_KEY,R2_BUCKET_NAME,R2_PUBLIC_URL&project-name=rag-chatbot)

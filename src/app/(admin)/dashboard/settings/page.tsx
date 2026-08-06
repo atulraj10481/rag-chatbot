@@ -1,11 +1,23 @@
+import WhiteLabelForm from '@/components/admin/white-label-form';
+import { Settings } from 'lucide-react';
+
 export default function SettingsPage() {
   return (
-    <div className="p-8">
-      <div className="flex items-center justify-between mb-8">
-        <h1 className="text-3xl font-bold tracking-tight">Settings</h1>
-        <span className="px-3 py-1 text-xs font-semibold bg-blue-100 text-blue-800 rounded-full">Phase 5</span>
+    <div className="space-y-8 max-w-6xl">
+      <div className="flex items-start justify-between">
+        <div>
+          <h1 className="text-2xl font-bold tracking-tight text-white">White-Label Settings</h1>
+          <p className="text-sm text-slate-500 mt-1">
+            Customize chatbot name, brand colors, welcome messages, and model routing strategy.
+          </p>
+        </div>
+        <span className="text-xs font-medium text-amber-400 bg-amber-400/10 border border-amber-400/20 rounded-full px-3 py-1.5 flex items-center gap-1.5">
+          <Settings className="h-3 w-3" />
+          Phase 5 · Branding
+        </span>
       </div>
-      <p className="text-slate-500">White-label config and general settings will be managed here.</p>
+
+      <WhiteLabelForm />
     </div>
   );
 }

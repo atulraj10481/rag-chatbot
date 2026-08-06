@@ -1,11 +1,39 @@
+'use client';
+
+import { useSearchParams } from 'next/navigation';
+import ChatInterface from '@/components/chat/chat-interface';
+import { Suspense } from 'react';
+
+function WidgetContent() {
+  const searchParams = useSearchParams();
+  const title = searchParams.get('title') || 'Assistant';
+  const primaryColor = searchParams.get('primaryColor') || '#3b82f6';
+
+  return (
+    <div className="h-screen w-full bg-white flex flex-col font-sans">
+      {/* Widget Header */}
+      <header
+        className="px-4 py-3 text-white flex items-center justify-between shadow-sm shrink-0"
+        style={{ backgroundColor: primaryColor }}
+      >
+        <div className="flex items-center gap-2">
+          <div className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse" />
+          <span className="font-semibold text-sm tracking-tight">{title}</span>
+        </div>
+      </header>
+
+      {/* Embedded Chat Interface */}
+      <main className="flex-1 p-2 overflow-hidden flex flex-col">
+        <ChatInterface />
+      </main>
+    </div>
+  );
+}
+
 export default function WidgetPage() {
   return (
-    <div className="flex h-screen flex-col items-center justify-center bg-transparent">
-      <div className="rounded-2xl border bg-white p-4 shadow-xl">
-        <span className="px-2 py-0.5 text-[10px] font-semibold bg-blue-100 text-blue-800 rounded-full mb-2 inline-block">Phase 4</span>
-        <h2 className="text-sm font-bold">Widget Bubble</h2>
-        <p className="text-xs text-slate-500">Iframe UI for website embedding.</p>
-      </div>
-    </div>
+    <Suspense fallback={<div className="p-4 text-xs text-slate-400">Loading widget...</div>}>
+      <WidgetContent />
+    </Suspense>
   );
 }
