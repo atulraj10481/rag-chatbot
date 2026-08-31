@@ -18,7 +18,7 @@ export async function DELETE(
     // Get document metadata to check R2 key
     const { data: doc } = await supabase
       .from('documents')
-      .select('r2_key')
+      .select('name, department_id, r2_key')
       .eq('id', id)
       .single();
 
@@ -35,6 +35,21 @@ export async function DELETE(
     if (error) {
       return NextResponse.json({ error: error.message }, { status: 500 });
     }
+
+    // Log audit event
+    const { createAdminClient } = await import('@/lib/supabase/server');
+    const adminClient = createAdminClient();
+    await adminClient.from('audit_logs').insert({
+      actor_id: user.id,
+      actor_email: user.email,
+      action: 'DOC_DELETED',
+      target_resource: `doc: ${doc?.name || id}`,
+      details: {
+        docId: id,
+        name: doc?.name,
+        department: doc?.department_id,
+      },
+    });
 
     return NextResponse.json({ success: true, id });
   } catch (error: any) {

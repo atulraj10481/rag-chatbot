@@ -10,18 +10,12 @@ export default function Home() {
         <p className="text-lg text-slate-400">
           Deploy-per-customer single-tenant RAG chatbot service.
         </p>
-        <div className="flex justify-center gap-4">
+        <div className="flex justify-center pt-2">
           <Link
-            href="/chat"
-            className="rounded-xl bg-indigo-600 px-6 py-3 text-sm font-semibold text-white shadow hover:bg-indigo-500 transition-colors"
+            href="/login"
+            className="inline-flex items-center justify-center rounded-xl bg-indigo-600 px-8 py-3.5 text-sm font-semibold text-white shadow-xl shadow-indigo-500/25 hover:bg-indigo-500 hover:shadow-indigo-500/40 transition-all duration-200"
           >
-            Go to Chat
-          </Link>
-          <Link
-            href="/dashboard"
-            className="rounded-xl bg-white/5 border border-white/10 px-6 py-3 text-sm font-semibold text-slate-300 shadow-sm hover:bg-white/10 hover:text-white transition-colors backdrop-blur-md"
-          >
-            Admin Dashboard
+            Sign In to Portal →
           </Link>
         </div>
       </div>

@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { ChatMessage, SourceCitation } from '@/types';
 import { v4 as uuidv4 } from 'uuid';
 
-export function useChat() {
+export function useChat(department?: string) {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [loading, setLoading] = useState(false);
   const [visitorId, setVisitorId] = useState('');
@@ -57,6 +57,7 @@ export function useChat() {
             sessionId,
             visitorId,
             history: historyTurns,
+            department: department || undefined,
           }),
         });
 

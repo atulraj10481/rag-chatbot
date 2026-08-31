@@ -6,6 +6,18 @@ import { Input } from '@/components/ui/input';
 import { Card, CardContent } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { toast } from 'sonner';
+import { Building2, Shield, Loader2 } from 'lucide-react';
+
+const DEPARTMENTS = [
+  'general',
+  'marketing',
+  'finance',
+  'sales',
+  'operations',
+  'hr',
+  'tech',
+  'admin',
+];
 
 interface DocumentUploaderProps {
   onUploadSuccess: () => void;
@@ -15,6 +27,8 @@ export default function DocumentUploader({ onUploadSuccess }: DocumentUploaderPr
   const [pdfFile, setPdfFile] = useState<File | null>(null);
   const [url, setUrl] = useState('');
   const [notionPageId, setNotionPageId] = useState('');
+  const [departmentId, setDepartmentId] = useState('general');
+  const [minimumRole, setMinimumRole] = useState('employee');
   const [loading, setLoading] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
 
@@ -28,6 +42,8 @@ export default function DocumentUploader({ onUploadSuccess }: DocumentUploaderPr
     setLoading(true);
     const formData = new FormData();
     formData.append('file', pdfFile);
+    formData.append('department_id', departmentId);
+    formData.append('minimum_role', minimumRole);
 
     try {
       const res = await fetch('/api/ingest/pdf', {
@@ -43,7 +59,7 @@ export default function DocumentUploader({ onUploadSuccess }: DocumentUploaderPr
         throw new Error(data.error || `Upload failed with status ${res.status}`);
       }
 
-      toast.success(`Successfully ingested "${data.document.name}" (${data.document.chunk_count} chunks generated)`);
+      toast.success(`Successfully ingested "${data.document.name}" into "${departmentId}" (${data.document.chunk_count} chunks generated)`);
       setPdfFile(null);
       onUploadSuccess();
     } catch (err: any) {
@@ -63,7 +79,11 @@ export default function DocumentUploader({ onUploadSuccess }: DocumentUploaderPr
       const res = await fetch('/api/ingest/url', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ url }),
+        body: JSON.stringify({ 
+          url,
+          department_id: departmentId,
+          minimum_role: minimumRole,
+        }),
       });
 
       const data = await res.json();
@@ -74,7 +94,7 @@ export default function DocumentUploader({ onUploadSuccess }: DocumentUploaderPr
         throw new Error(data.error || 'Failed to scrape URL');
       }
 
-      toast.success(`Successfully ingested "${data.document.name}" (${data.document.chunk_count} chunks)`);
+      toast.success(`Successfully ingested "${data.document.name}" into "${departmentId}" (${data.document.chunk_count} chunks)`);
       setUrl('');
       onUploadSuccess();
     } catch (err: any) {
@@ -93,7 +113,11 @@ export default function DocumentUploader({ onUploadSuccess }: DocumentUploaderPr
       const res = await fetch('/api/ingest/notion', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ pageId: notionPageId }),
+        body: JSON.stringify({ 
+          pageId: notionPageId,
+          department_id: departmentId,
+          minimum_role: minimumRole,
+        }),
       });
 
       const data = await res.json();
@@ -104,7 +128,7 @@ export default function DocumentUploader({ onUploadSuccess }: DocumentUploaderPr
         throw new Error(data.error || 'Failed to sync Notion page');
       }
 
-      toast.success(`Synced "${data.document.name}" (${data.document.chunk_count} chunks)`);
+      toast.success(`Synced "${data.document.name}" into "${departmentId}" (${data.document.chunk_count} chunks)`);
       setNotionPageId('');
       onUploadSuccess();
     } catch (err: any) {
@@ -148,8 +172,47 @@ export default function DocumentUploader({ onUploadSuccess }: DocumentUploaderPr
   };
 
   return (
-    <Card className="w-full bg-white/3 border border-white/8 shadow-none">
+    <Card className="w-full bg-white/3 border border-white/8 shadow-none rounded-2xl">
       <CardContent className="pt-6">
+        {/* Universal Partition & Access Targeting Controls */}
+        <div className="mb-6 p-4 rounded-xl bg-white/5 border border-white/8 grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div className="space-y-1.5">
+            <label className="text-xs font-semibold text-slate-300 flex items-center gap-1.5">
+              <Building2 className="h-3.5 w-3.5 text-indigo-400" />
+              Target Department Partition
+            </label>
+            <select
+              value={departmentId}
+              onChange={(e) => setDepartmentId(e.target.value)}
+              className="flex h-10 w-full rounded-xl border border-white/10 bg-slate-900 px-3 py-2 text-xs text-white focus:border-indigo-500/50 focus:ring-1 focus:ring-indigo-500/20 outline-none capitalize cursor-pointer"
+            >
+              {DEPARTMENTS.map((dept) => (
+                <option key={dept} value={dept} className="bg-slate-900 text-white capitalize">
+                  {dept} Department
+                </option>
+              ))}
+            </select>
+            <p className="text-[11px] text-slate-500">Vector chunks will be list-partitioned into chunks_{departmentId}.</p>
+          </div>
+
+          <div className="space-y-1.5">
+            <label className="text-xs font-semibold text-slate-300 flex items-center gap-1.5">
+              <Shield className="h-3.5 w-3.5 text-amber-400" />
+              Minimum Role Clearance
+            </label>
+            <select
+              value={minimumRole}
+              onChange={(e) => setMinimumRole(e.target.value)}
+              className="flex h-10 w-full rounded-xl border border-white/10 bg-slate-900 px-3 py-2 text-xs text-white focus:border-indigo-500/50 focus:ring-1 focus:ring-indigo-500/20 outline-none capitalize cursor-pointer"
+            >
+              <option value="employee" className="bg-slate-900 text-white">Employee (All Staff in Dept)</option>
+              <option value="manager" className="bg-slate-900 text-white">Manager (Management & Above)</option>
+              <option value="admin" className="bg-slate-900 text-white">Admin (Restricted to Admins)</option>
+            </select>
+            <p className="text-[11px] text-slate-500">Specifies the minimum clearance level required to retrieve this document.</p>
+          </div>
+        </div>
+
         <Tabs defaultValue="pdf" className="w-full">
           <TabsList className="grid w-full grid-cols-3 mb-6 bg-white/5 border border-white/8 rounded-xl p-1">
             <TabsTrigger value="pdf" className="text-xs sm:text-sm rounded-lg data-[state=active]:bg-white/10 data-[state=active]:text-white data-[state=active]:shadow-sm text-slate-500 transition-all">📄 Upload PDF</TabsTrigger>
@@ -212,8 +275,17 @@ export default function DocumentUploader({ onUploadSuccess }: DocumentUploaderPr
                 )}
               </label>
 
-              <Button type="submit" className="w-full h-11 text-sm font-semibold" disabled={!pdfFile || loading}>
-                {loading ? 'Processing & Embedding PDF...' : pdfFile ? `Upload "${pdfFile.name}"` : 'Select a PDF File'}
+              <Button type="submit" className="w-full h-11 text-sm font-semibold bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl shadow-lg shadow-indigo-500/20" disabled={!pdfFile || loading}>
+                {loading ? (
+                  <span className="flex items-center gap-2">
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    Processing & Ingesting into {departmentId}...
+                  </span>
+                ) : pdfFile ? (
+                  `Ingest "${pdfFile.name}" into ${departmentId}`
+                ) : (
+                  'Select a PDF File'
+                )}
               </Button>
             </form>
           </TabsContent>
@@ -230,10 +302,17 @@ export default function DocumentUploader({ onUploadSuccess }: DocumentUploaderPr
                   required
                   className="h-11 bg-white/5 border-white/10 text-slate-200 placeholder:text-slate-600 focus:border-indigo-500/40 rounded-xl"
                 />
-                <p className="text-xs text-slate-600">Scrapes article text, strips navigation boilerplate, and indexes into pgvector.</p>
+                <p className="text-xs text-slate-600">Scrapes article text, strips navigation boilerplate, and indexes into the {departmentId} partition.</p>
               </div>
-              <Button type="submit" className="w-full h-11 text-sm font-semibold" disabled={!url || loading}>
-                {loading ? 'Scraping & Embedding URL...' : 'Scrape & Process Web Page'}
+              <Button type="submit" className="w-full h-11 text-sm font-semibold bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl shadow-lg shadow-indigo-500/20" disabled={!url || loading}>
+                {loading ? (
+                  <span className="flex items-center gap-2">
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    Scraping & Indexing into {departmentId}...
+                  </span>
+                ) : (
+                  `Scrape & Index into ${departmentId}`
+                )}
               </Button>
             </form>
           </TabsContent>
@@ -262,8 +341,15 @@ export default function DocumentUploader({ onUploadSuccess }: DocumentUploaderPr
                   />
                   <p className="text-xs text-slate-600">Copy the 32-character Page ID from your Notion page URL.</p>
                 </div>
-                <Button type="submit" className="w-full h-11 text-sm font-semibold" disabled={!notionPageId || loading}>
-                  {loading ? 'Fetching Notion Page...' : 'Sync Notion Page'}
+                <Button type="submit" className="w-full h-11 text-sm font-semibold bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl shadow-lg shadow-indigo-500/20" disabled={!notionPageId || loading}>
+                  {loading ? (
+                    <span className="flex items-center gap-2">
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                      Syncing into {departmentId}...
+                    </span>
+                  ) : (
+                    `Sync Notion Page into ${departmentId}`
+                  )}
                 </Button>
               </form>
             </div>

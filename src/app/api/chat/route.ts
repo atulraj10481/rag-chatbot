@@ -5,7 +5,7 @@ export const runtime = 'nodejs';
 
 export async function POST(req: Request) {
   try {
-    const { message, sessionId, visitorId, history } = await req.json();
+    const { message, sessionId, visitorId, history, department } = await req.json();
 
     if (!message || typeof message !== 'string') {
       return new Response(JSON.stringify({ error: 'Message text is required' }), { status: 400 });
@@ -14,6 +14,30 @@ export async function POST(req: Request) {
     const currentVisitorId = visitorId || 'anonymous_visitor';
     const supabase = await createClient();
 
+    // Fetch user profile for RBAC
+    const { data: { user } } = await supabase.auth.getUser();
+    let userRole = 'employee';
+    let userDepts: string[] = department ? [department] : ['general'];
+    
+    if (user) {
+      const { createAdminClient } = await import('@/lib/supabase/server');
+      const adminClient = createAdminClient();
+      const { data: profile } = await adminClient
+        .from('profiles')
+        .select('role, department_id, departments')
+        .eq('id', user.id)
+        .single();
+        
+      if (profile) {
+        userRole = profile.role;
+        if (profile.departments && profile.departments.length > 0) {
+          userDepts = profile.departments;
+        } else if (profile.department_id) {
+          userDepts = [profile.department_id];
+        }
+      }
+    }
+
     // Get or create session
     let activeSessionId = sessionId;
     if (!activeSessionId) {
@@ -21,7 +45,7 @@ export async function POST(req: Request) {
         .from('chat_sessions')
         .insert({
           visitor_id: currentVisitorId,
-          source: 'standalone',
+          source: department ? 'widget' : 'standalone',
         })
         .select('id')
         .single();
@@ -46,6 +70,8 @@ export async function POST(req: Request) {
               sessionId: activeSessionId,
               visitorId: currentVisitorId,
               history,
+              userRole,
+              userDepts,
             },
             (textChunk) => {
               controller.enqueue(

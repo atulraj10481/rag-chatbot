@@ -137,6 +137,8 @@ export default function DocumentsPage() {
                 <tr className="border-b border-white/5">
                   <th className="px-5 py-3 text-[11px] font-semibold text-slate-500 uppercase tracking-wider">Document Name</th>
                   <th className="px-5 py-3 text-[11px] font-semibold text-slate-500 uppercase tracking-wider">Source</th>
+                  <th className="px-5 py-3 text-[11px] font-semibold text-slate-500 uppercase tracking-wider">Department</th>
+                  <th className="px-5 py-3 text-[11px] font-semibold text-slate-500 uppercase tracking-wider">Clearance</th>
                   <th className="px-5 py-3 text-[11px] font-semibold text-slate-500 uppercase tracking-wider">Chunks</th>
                   <th className="px-5 py-3 text-[11px] font-semibold text-slate-500 uppercase tracking-wider">Status</th>
                   <th className="px-5 py-3 text-[11px] font-semibold text-slate-500 uppercase tracking-wider">Added</th>
@@ -151,6 +153,19 @@ export default function DocumentsPage() {
                     </td>
                     <td className="px-5 py-3.5">
                       {getSourceBadge(doc.source_type)}
+                    </td>
+                    <td className="px-5 py-3.5">
+                      <span className="inline-flex text-[11px] font-medium text-slate-300 bg-white/5 px-2 py-0.5 rounded border border-white/10 capitalize">
+                        {doc.department_id || 'general'}
+                      </span>
+                    </td>
+                    <td className="px-5 py-3.5">
+                      <span className={`inline-flex text-[11px] font-medium px-2 py-0.5 rounded border capitalize
+                        ${doc.minimum_role === 'admin' ? 'bg-red-500/10 text-red-400 border-red-500/20' :
+                          doc.minimum_role === 'manager' ? 'bg-amber-500/10 text-amber-400 border-amber-500/20' :
+                          'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'}`}>
+                        {doc.minimum_role || 'employee'}
+                      </span>
                     </td>
                     <td className="px-5 py-3.5 text-slate-400 font-mono text-xs">
                       {doc.chunk_count ?? '—'} <span className="text-slate-600">chunks</span>

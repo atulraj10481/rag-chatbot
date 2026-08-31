@@ -15,6 +15,8 @@ export async function POST(req: Request) {
 
     const formData = await req.formData();
     const file = formData.get('file') as File | null;
+    const departmentId = (formData.get('department_id') as string) || 'general';
+    const minimumRole = (formData.get('minimum_role') as string) || 'employee';
 
     if (!file) {
       return NextResponse.json({ error: 'No file uploaded' }, { status: 400 });
@@ -60,7 +62,7 @@ export async function POST(req: Request) {
         .eq('source_type', 'pdf');
     }
 
-    // 3. Create document record in pending state
+    // 3. Create document record in pending state with department and minimum_role
     const { data: doc, error: docError } = await supabase
       .from('documents')
       .insert({
@@ -70,6 +72,8 @@ export async function POST(req: Request) {
         version,
         hash: fileHash,
         trust_score: 1.0, // High trust for explicitly uploaded PDFs
+        department_id: departmentId,
+        minimum_role: minimumRole,
       })
       .select()
       .single();
@@ -95,9 +99,11 @@ export async function POST(req: Request) {
       const chunkTexts = chunks.map(c => c.content);
       const embeddings = await generateEmbeddings(chunkTexts);
 
-      // 4. Prepare chunk records
+      // 4. Prepare chunk records with partition department_id
       const chunkRecords = chunks.map((chunk, idx) => ({
         document_id: doc.id,
+        department_id: departmentId,
+        minimum_role: minimumRole,
         content: chunk.content,
         embedding: embeddings[idx],
         metadata: {
@@ -106,8 +112,10 @@ export async function POST(req: Request) {
         },
       }));
 
-      // 5. Store vector chunks in pgvector
-      const { error: chunkError } = await supabase
+      // 5. Store vector chunks in pgvector using adminClient for reliable partition inserts
+      const { createAdminClient } = await import('@/lib/supabase/server');
+      const adminClient = createAdminClient();
+      const { error: chunkError } = await adminClient
         .from('document_chunks')
         .insert(chunkRecords);
 
@@ -126,6 +134,21 @@ export async function POST(req: Request) {
           updated_at: new Date().toISOString(),
         })
         .eq('id', doc.id);
+
+      // Log audit event
+      await adminClient.from('audit_logs').insert({
+        actor_id: user.id,
+        actor_email: user.email,
+        action: 'DOC_INGESTED',
+        target_resource: `doc: ${file.name}`,
+        details: {
+          docId: doc.id,
+          sourceType: 'pdf',
+          department: departmentId,
+          minimumRole,
+          chunksCount: chunks.length,
+        },
+      });
 
       return NextResponse.json({
         success: true,

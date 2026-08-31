@@ -8,6 +8,8 @@ export interface Document {
   status: 'pending' | 'processing' | 'ready' | 'error';
   error_message?: string;
   chunk_count: number;
+  department_id?: string;
+  minimum_role?: string;
   created_at: string;
   updated_at: string;
 }
@@ -15,6 +17,8 @@ export interface Document {
 export interface DocumentChunk {
   id: string;
   document_id: string;
+  department_id?: string;
+  minimum_role?: string;
   content: string;
   metadata: {
     page_num?: number;
@@ -73,6 +77,26 @@ export interface QueryLog {
   created_at: string;
 }
 
+export interface Profile {
+  id: string;
+  email?: string;
+  role: 'admin' | 'manager' | 'employee';
+  department_id?: string;
+  departments: string[];
+  created_at: string;
+  updated_at: string;
+}
+
+export interface AuditLog {
+  id: string;
+  actor_id?: string;
+  actor_email?: string;
+  action: string;
+  target_resource?: string;
+  details?: Record<string, any>;
+  created_at: string;
+}
+
 export interface Settings {
   id: number;
   chatbot_name: string;
@@ -84,6 +108,8 @@ export interface Settings {
   model_preference: 'auto' | 'cheap' | 'standard' | 'premium';
   similarity_threshold: number;
   max_chunks: number;
+  is_public_chat_enabled?: boolean;
+  allowed_domains?: string[];
   created_at: string;
   updated_at: string;
 }

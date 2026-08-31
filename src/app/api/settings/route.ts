@@ -42,6 +42,7 @@ export async function POST(req: Request) {
         similarity_threshold: parseFloat(body.similarity_threshold || '0.7'),
         suggested_questions: body.suggested_questions || [],
         is_public_chat_enabled: body.is_public_chat_enabled !== undefined ? body.is_public_chat_enabled : true,
+        allowed_domains: body.allowed_domains || [],
         updated_at: new Date().toISOString(),
       })
       .select()

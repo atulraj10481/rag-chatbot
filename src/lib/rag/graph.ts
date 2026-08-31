@@ -10,6 +10,9 @@ export interface RAGInput {
   sessionId?: string;
   visitorId: string;
   history?: { role: string; content: string }[];
+  userRole?: string;
+  userDept?: string;
+  userDepts?: string[];
 }
 
 export async function executeRAGWorkflow(
@@ -55,8 +58,20 @@ export async function executeRAGWorkflow(
     return { answer: cache.answer, model: cache.model + ' (cached)', sources: cache.sources || [] };
   }
 
-  // 3. Retrieve relevant vector chunks (Hybrid Search)
-  const { chunks, citations } = await retrieveChunks(sanitizedQuery, 0.5, 5, queryEmbedding);
+  // Determine departments to search
+  const deptsToSearch = input.userDepts && input.userDepts.length > 0 
+    ? input.userDepts 
+    : [input.userDept || 'general'];
+
+  // 3. Retrieve relevant vector chunks (Hybrid Search with RBAC)
+  const { chunks, citations } = await retrieveChunks(
+    sanitizedQuery, 
+    0.5, 
+    5, 
+    queryEmbedding,
+    deptsToSearch,
+    input.userRole || 'employee'
+  );
 
   // 4. Select optimal OpenRouter model
   const selectedModel = selectModel(sanitizedQuery, chunks);

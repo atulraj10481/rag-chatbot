@@ -1,0 +1,24 @@
+name = "rag-ingestion-worker"
+main = "src/index.ts"
+compatibility_date = "2026-08-30"
+compatibility_flags = ["nodejs_compat"]
+
+# Queue consumer (receives PDF processing jobs)
+[[queues.consumers]]
+queue = "rag-ingestion-queue"
+max_batch_size = 5
+max_batch_timeout = 5
+max_retries = 3
+
+# R2 Bucket binding (where PDFs are stored)
+[[r2_buckets]]
+binding = "DOCUMENT_BUCKET"
+bucket_name = "rag-chatbot-docs"
+
+# Cloudflare Workers AI for cheap embedding generation
+[ai]
+binding = "AI"
+
+[vars]
+SUPABASE_URL = ""
+# SUPABASE_SERVICE_ROLE_KEY is set via secret: npx wrangler secret put SUPABASE_SERVICE_ROLE_KEY

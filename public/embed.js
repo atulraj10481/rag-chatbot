@@ -8,6 +8,7 @@
   const baseUrl = currentScript ? new URL(currentScript.src).origin : window.location.origin;
   const primaryColor = currentScript?.getAttribute('data-primary-color') || '#3b82f6';
   const title = currentScript?.getAttribute('data-title') || 'Company Assistant';
+  const department = currentScript?.getAttribute('data-department') || 'general';
 
   // Create floating bubble button
   const button = document.createElement('div');
@@ -54,7 +55,7 @@
     border: '1px solid rgba(0, 0, 0, 0.1)',
   });
 
-  const widgetUrl = `${baseUrl}/widget?primaryColor=${encodeURIComponent(primaryColor)}&title=${encodeURIComponent(title)}`;
+  const widgetUrl = `${baseUrl}/widget?primaryColor=${encodeURIComponent(primaryColor)}&title=${encodeURIComponent(title)}&department=${encodeURIComponent(department)}`;
   const iframe = document.createElement('iframe');
   iframe.src = widgetUrl;
   Object.assign(iframe.style, {

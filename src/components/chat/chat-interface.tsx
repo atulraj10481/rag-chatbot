@@ -10,8 +10,12 @@ import { ArrowUp, Sparkles, SidebarOpen, SidebarClose } from 'lucide-react';
 import { SourceCitation } from '@/types';
 import { cn } from '@/lib/utils';
 
-export default function ChatInterface() {
-  const { messages, loading, sendMessage } = useChat();
+interface ChatInterfaceProps {
+  department?: string;
+}
+
+export default function ChatInterface({ department }: ChatInterfaceProps = {}) {
+  const { messages, loading, sendMessage } = useChat(department);
   const [input, setInput] = useState('');
   const [panelOpen, setPanelOpen] = useState(true);
   const [activeSources, setActiveSources] = useState<SourceCitation[]>([]);

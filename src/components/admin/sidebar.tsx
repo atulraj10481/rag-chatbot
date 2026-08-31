@@ -2,12 +2,14 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { LayoutDashboard, FileText, Settings, Database, MessageSquare } from 'lucide-react';
+import { LayoutDashboard, FileText, Settings, Database, MessageSquare, Users, ShieldAlert } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 const navItems = [
-  { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
+  { name: 'Overview', href: '/dashboard', icon: LayoutDashboard },
+  { name: 'User Management', href: '/dashboard/users', icon: Users },
   { name: 'Documents', href: '/dashboard/documents', icon: FileText },
+  { name: 'Audit Trail', href: '/dashboard/audit', icon: ShieldAlert },
   { name: 'Queries', href: '/dashboard/queries', icon: Database },
   { name: 'Settings', href: '/dashboard/settings', icon: Settings },
 ];

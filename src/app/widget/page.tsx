@@ -8,6 +8,7 @@ function WidgetContent() {
   const searchParams = useSearchParams();
   const title = searchParams.get('title') || 'Assistant';
   const primaryColor = searchParams.get('primaryColor') || '#3b82f6';
+  const department = searchParams.get('department') || 'general';
 
   return (
     <div className="h-screen w-full bg-white flex flex-col font-sans">
@@ -19,12 +20,15 @@ function WidgetContent() {
         <div className="flex items-center gap-2">
           <div className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse" />
           <span className="font-semibold text-sm tracking-tight">{title}</span>
+          <span className="text-[10px] bg-black/20 px-2 py-0.5 rounded-full capitalize font-mono">
+            {department}
+          </span>
         </div>
       </header>
 
       {/* Embedded Chat Interface */}
       <main className="flex-1 p-2 overflow-hidden flex flex-col">
-        <ChatInterface />
+        <ChatInterface department={department} />
       </main>
     </div>
   );

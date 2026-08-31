@@ -76,6 +76,8 @@ export async function POST(req: Request) {
         version,
         hash: fileHash,
         trust_score: 0.9, // Internal documentation gets high trust score
+        department_id: departmentId,
+        minimum_role: minimumRole,
       })
       .select()
       .single();
@@ -92,13 +94,17 @@ export async function POST(req: Request) {
       // 4. Prepare vector records
       const chunkRecords = chunks.map((chunk, idx) => ({
         document_id: doc.id,
+        department_id: departmentId,
+        minimum_role: minimumRole,
         content: chunk.content,
         embedding: embeddings[idx],
         metadata: chunk.metadata,
       }));
 
       // 5. Store vector chunks in pgvector
-      const { error: chunkError } = await supabase
+      const { createAdminClient } = await import('@/lib/supabase/server');
+      const adminClient = createAdminClient();
+      const { error: chunkError } = await adminClient
         .from('document_chunks')
         .insert(chunkRecords);
 

@@ -6,25 +6,29 @@ export async function retrieveChunks(
   query: string,
   matchThreshold: number = 0.5,
   matchCount: number = 5,
-  precomputedEmbedding?: number[]
+  precomputedEmbedding?: number[],
+  userDepts: string[] = ['general'],
+  userRole: string = 'employee'
 ): Promise<{ chunks: DocumentChunk[]; citations: SourceCitation[] }> {
   const supabase = await createClient();
 
   // 1. Generate query embedding via OpenRouter (or use precomputed)
   const queryEmbedding = precomputedEmbedding || await generateSingleEmbedding(query);
 
-  // 2. Call hybrid_search RPC function in Supabase pgvector
-  const { data: matchedData, error } = await supabase.rpc('hybrid_search', {
-    query_text: query,
+  // Guarantee userDepts is an array
+  const safeDepts = Array.isArray(userDepts) ? userDepts : [userDepts || 'general'];
+
+  // 2. Call RBAC-aware match function in Supabase pgvector
+  const { data: matchedData, error } = await supabase.rpc('match_chunks_rbac', {
     query_embedding: queryEmbedding,
+    match_threshold: matchThreshold,
     match_count: matchCount,
-    full_text_weight: 1.0,
-    semantic_weight: 1.0,
-    rrf_k: 60
+    user_depts: safeDepts,
+    user_role: userRole
   });
 
   if (error) {
-    console.error('Hybrid retrieval RPC error:', error);
+    console.error('RBAC retrieval RPC error:', error);
     return { chunks: [], citations: [] };
   }
 
@@ -46,8 +50,10 @@ export async function retrieveChunks(
     id: item.id,
     document_id: item.document_id,
     content: item.content,
+    department_id: item.department_id,
+    minimum_role: item.minimum_role,
     metadata: item.metadata || {},
-    similarity: item.rrf_score || item.similarity,
+    similarity: item.similarity,
   }));
 
   const citations: SourceCitation[] = matchedData.map((item: any) => ({
@@ -55,7 +61,7 @@ export async function retrieveChunks(
     document_name: docMap.get(item.document_id) || 'Document',
     content: item.content,
     page_num: item.metadata?.page_num,
-    similarity: item.rrf_score || item.similarity,
+    similarity: item.similarity,
   }));
 
   return { chunks, citations };

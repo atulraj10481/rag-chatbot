@@ -62,6 +62,8 @@ export async function POST(req: Request) {
         version,
         hash: fileHash,
         trust_score: 0.8, // URLs are slightly lower trust than uploaded PDFs
+        department_id: departmentId,
+        minimum_role: minimumRole,
       })
       .select()
       .single();
@@ -78,6 +80,8 @@ export async function POST(req: Request) {
       // 4. Prepare chunk records
       const chunkRecords = chunks.map((chunk, idx) => ({
         document_id: doc.id,
+        department_id: departmentId,
+        minimum_role: minimumRole,
         content: chunk.content,
         embedding: embeddings[idx],
         metadata: chunk.metadata,
