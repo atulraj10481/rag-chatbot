@@ -1,26 +1,62 @@
-import { StateGraph, END } from '@langchain/langgraph';
+import { Annotation, StateGraph, START, END } from '@langchain/langgraph';
 import { checkSemanticCache, setSemanticCache } from './redis-cache';
 import { retrieveChunks } from './retriever';
 import { rerankChunks } from './reranker';
 import { openRouterStream } from '@/lib/openrouter/client';
 
-// Define the state for the LangGraph execution
-export interface AgentState {
-  query: string;
-  departmentId: string;
-  role: string;
-  history: any[];
-  isCacheHit: boolean;
-  intent: 'rag' | 'chit_chat' | 'clarification';
-  retrievedChunks: any[];
-  rerankedChunks: any[];
-  answer: string;
-  sources: any[];
-  usedModel: string;
-}
+// Define the state schema using Annotation for LangGraph
+export const AgentStateAnnotation = Annotation.Root({
+  query: Annotation<string>({
+    reducer: (x, y) => y ?? x,
+    default: () => '',
+  }),
+  departmentId: Annotation<string>({
+    reducer: (x, y) => y ?? x,
+    default: () => '',
+  }),
+  role: Annotation<string>({
+    reducer: (x, y) => y ?? x,
+    default: () => '',
+  }),
+  history: Annotation<any[]>({
+    reducer: (x, y) => y ?? x,
+    default: () => [],
+  }),
+  isCacheHit: Annotation<boolean>({
+    reducer: (x, y) => y ?? x,
+    default: () => false,
+  }),
+  intent: Annotation<'rag' | 'chit_chat' | 'clarification'>({
+    reducer: (x, y) => y ?? x,
+    default: () => 'rag',
+  }),
+  retrievedChunks: Annotation<any[]>({
+    reducer: (x, y) => y ?? x,
+    default: () => [],
+  }),
+  rerankedChunks: Annotation<any[]>({
+    reducer: (x, y) => y ?? x,
+    default: () => [],
+  }),
+  answer: Annotation<string>({
+    reducer: (x, y) => y ?? x,
+    default: () => '',
+  }),
+  sources: Annotation<any[]>({
+    reducer: (x, y) => y ?? x,
+    default: () => [],
+  }),
+  usedModel: Annotation<string>({
+    reducer: (x, y) => y ?? x,
+    default: () => '',
+  }),
+});
+
+export type AgentState = typeof AgentStateAnnotation.State;
+export type AgentUpdate = typeof AgentStateAnnotation.Update;
 
 // 1. Semantic Cache Node
-const checkCacheNode = async (state: AgentState): Promise<Partial<AgentState>> => {
+const checkCacheNode = async (state: AgentState): Promise<AgentUpdate> => {
   const cacheHit = await checkSemanticCache(state.query);
   if (cacheHit) {
     return { 
@@ -34,9 +70,7 @@ const checkCacheNode = async (state: AgentState): Promise<Partial<AgentState>> =
 };
 
 // 2. Intent Classifier Node (Fast, cheap model)
-const intentClassificationNode = async (state: AgentState): Promise<Partial<AgentState>> => {
-  // Mocking the LLM call for intent detection for brevity
-  // In production, this calls a cheap model like Haiku
+const intentClassificationNode = async (state: AgentState): Promise<AgentUpdate> => {
   const lowerQuery = state.query.toLowerCase();
   
   let intent: 'rag' | 'chit_chat' | 'clarification' = 'rag';
@@ -50,19 +84,15 @@ const intentClassificationNode = async (state: AgentState): Promise<Partial<Agen
 };
 
 // 3. Retrieval & Reranking Node
-const retrievalNode = async (state: AgentState): Promise<Partial<AgentState>> => {
-  // Step 1: Hybrid Search (BM25 + pgvector) limited to department partitions
-  // Since retrieveChunks uses `hybrid_search` RPC, we assume it's updated to pass dept/role
+const retrievalNode = async (state: AgentState): Promise<AgentUpdate> => {
   const { chunks } = await retrieveChunks(state.query, 0.5, 20); // Get top 20
-  
-  // Step 2: Cross-Encoder Reranking
   const rerankedChunks = await rerankChunks(state.query, chunks, 5); // Narrow down to Top 5 high-precision
   
   return { retrievedChunks: chunks, rerankedChunks };
 };
 
 // 4. Generation Node (Complex model)
-const generationNode = async (state: AgentState): Promise<Partial<AgentState>> => {
+const generationNode = async (state: AgentState): Promise<AgentUpdate> => {
   if (state.intent === 'chit_chat') {
     return { answer: "Hello! I am your enterprise assistant. How can I help you with company documentation today?", sources: [] };
   }
@@ -97,43 +127,23 @@ const generationNode = async (state: AgentState): Promise<Partial<AgentState>> =
 };
 
 // Define the Graph Workflow
-const workflow = new StateGraph<AgentState>({
-  channels: {
-    query: { value: (x, y) => y ?? x, default: () => '' },
-    departmentId: { value: (x, y) => y ?? x, default: () => '' },
-    role: { value: (x, y) => y ?? x, default: () => '' },
-    history: { value: (x, y) => y ?? x, default: () => [] },
-    isCacheHit: { value: (x, y) => y ?? x, default: () => false },
-    intent: { value: (x, y) => y ?? x, default: () => 'rag' },
-    retrievedChunks: { value: (x, y) => y ?? x, default: () => [] },
-    rerankedChunks: { value: (x, y) => y ?? x, default: () => [] },
-    answer: { value: (x, y) => y ?? x, default: () => '' },
-    sources: { value: (x, y) => y ?? x, default: () => [] },
-    usedModel: { value: (x, y) => y ?? x, default: () => '' }
-  }
-});
-
-// Add nodes
-workflow.addNode("check_cache", checkCacheNode);
-workflow.addNode("intent_classifier", intentClassificationNode);
-workflow.addNode("retrieve_rerank", retrievalNode);
-workflow.addNode("generate", generationNode);
-
-// Define edges and routing
-workflow.setEntryPoint("check_cache");
-
-workflow.addConditionalEdges(
-  "check_cache",
-  (state) => state.isCacheHit ? "end" : "continue",
-  {
-    "end": END,
-    "continue": "intent_classifier"
-  }
-);
-
-workflow.addEdge("intent_classifier", "retrieve_rerank");
-workflow.addEdge("retrieve_rerank", "generate");
-workflow.addEdge("generate", END);
+const workflow = new StateGraph(AgentStateAnnotation)
+  .addNode("check_cache", checkCacheNode)
+  .addNode("intent_classifier", intentClassificationNode)
+  .addNode("retrieve_rerank", retrievalNode)
+  .addNode("generate", generationNode)
+  .addEdge(START, "check_cache")
+  .addConditionalEdges(
+    "check_cache",
+    (state) => (state.isCacheHit ? "end" : "continue"),
+    {
+      end: END,
+      continue: "intent_classifier"
+    }
+  )
+  .addEdge("intent_classifier", "retrieve_rerank")
+  .addEdge("retrieve_rerank", "generate")
+  .addEdge("generate", END);
 
 // Compile the graph
 export const RAGAgent = workflow.compile();

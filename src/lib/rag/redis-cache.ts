@@ -1,18 +1,26 @@
-import { createClient } from 'redis';
 import { generateSingleEmbedding } from './embeddings';
 
 // Redis connection setup
-const redisClient = createClient({
-  url: process.env.REDIS_URL || 'redis://localhost:6379'
-});
-
+let redisClient: any = null;
 let isConnected = false;
-redisClient.on('error', err => console.log('Redis Client Error', err));
 
 async function ensureConnection() {
-  if (!isConnected) {
-    await redisClient.connect();
-    isConnected = true;
+  if (isConnected && redisClient) return redisClient;
+  try {
+    // Dynamic import to avoid build errors if redis isn't installed
+    // @ts-ignore
+    const redisModule = await import('redis');
+    if (!redisClient && redisModule?.createClient) {
+      redisClient = redisModule.createClient({
+        url: process.env.REDIS_URL || 'redis://localhost:6379'
+      });
+      redisClient.on('error', (err: any) => console.log('Redis Client Error', err));
+      await redisClient.connect();
+      isConnected = true;
+    }
+    return redisClient;
+  } catch (err) {
+    return null;
   }
 }
 
@@ -21,7 +29,8 @@ async function ensureConnection() {
  * Expects Redis to be configured with RediSearch and Vector Search capabilities.
  */
 export async function checkSemanticCache(query: string, threshold = 0.95): Promise<{ answer: string, sources: any[] } | null> {
-  await ensureConnection();
+  const client = await ensureConnection();
+  if (!client) return null;
   
   // Generate embedding for the new query
   const queryEmbedding = await generateSingleEmbedding(query);
@@ -33,7 +42,7 @@ export async function checkSemanticCache(query: string, threshold = 0.95): Promi
   try {
     // Perform vector search on the 'idx:queries' index
     // KNN 1 means we just want the absolute closest match
-    const result = await redisClient.ft.search(
+    const result = await client.ft.search(
       'idx:queries',
       '*=>[KNN 1 @embedding $BLOB AS score]',
       {
@@ -44,7 +53,7 @@ export async function checkSemanticCache(query: string, threshold = 0.95): Promi
       }
     );
 
-    if (result.total > 0) {
+    if (result && result.total > 0) {
       const topMatch = result.documents[0].value;
       const score = Number(topMatch.score);
       
@@ -71,7 +80,9 @@ export async function checkSemanticCache(query: string, threshold = 0.95): Promi
  * Stores a successfully generated answer into the Redis Semantic Cache.
  */
 export async function setSemanticCache(query: string, answer: string, sources: any[]) {
-  await ensureConnection();
+  const client = await ensureConnection();
+  if (!client) return;
+
   const queryEmbedding = await generateSingleEmbedding(query);
   
   const float32Array = new Float32Array(queryEmbedding);
@@ -80,7 +91,7 @@ export async function setSemanticCache(query: string, answer: string, sources: a
   const hashId = `query:${Date.now()}`;
   
   try {
-    await redisClient.hSet(hashId, {
+    await client.hSet(hashId, {
       query: query,
       answer: answer,
       sources: JSON.stringify(sources),
@@ -88,7 +99,7 @@ export async function setSemanticCache(query: string, answer: string, sources: a
     });
     
     // Set expiry for 30 days to keep cache fresh
-    await redisClient.expire(hashId, 60 * 60 * 24 * 30);
+    await client.expire(hashId, 60 * 60 * 24 * 30);
   } catch (err) {
     console.error('Semantic Cache Set Error:', err);
   }

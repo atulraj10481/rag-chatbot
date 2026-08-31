@@ -12,7 +12,10 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const { url } = await req.json();
+    const body = await req.json();
+    const { url, department_id, minimum_role } = body || {};
+    const departmentId = (department_id as string) || 'general';
+    const minimumRole = (minimum_role as string) || 'employee';
 
     if (!url || typeof url !== 'string' || !url.startsWith('http')) {
       return NextResponse.json({ error: 'Valid URL is required' }, { status: 400 });
@@ -35,10 +38,12 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'This exact URL content has already been ingested' }, { status: 409 });
     }
 
+    const sourceUrl = url;
+
     const { data: previousDocs } = await supabase
       .from('documents')
       .select('version')
-      .eq('source_url', url)
+      .eq('source_url', sourceUrl)
       .order('version', { ascending: false })
       .limit(1);
 
@@ -48,7 +53,7 @@ export async function POST(req: Request) {
       await supabase
         .from('documents')
         .update({ archived: true })
-        .eq('source_url', url);
+        .eq('source_url', sourceUrl);
     }
 
     // 2. Create document record
@@ -57,7 +62,7 @@ export async function POST(req: Request) {
       .insert({
         name: title,
         source_type: 'url',
-        source_url: url,
+        source_url: sourceUrl,
         status: 'processing',
         version,
         hash: fileHash,
@@ -88,7 +93,9 @@ export async function POST(req: Request) {
       }));
 
       // 5. Store vector chunks
-      const { error: chunkError } = await supabase
+      const { createAdminClient } = await import('@/lib/supabase/server');
+      const adminClient = createAdminClient();
+      const { error: chunkError } = await adminClient
         .from('document_chunks')
         .insert(chunkRecords);
 
@@ -105,6 +112,21 @@ export async function POST(req: Request) {
           updated_at: new Date().toISOString(),
         })
         .eq('id', doc.id);
+
+      // Log audit event
+      await adminClient.from('audit_logs').insert({
+        actor_id: user.id,
+        actor_email: user.email,
+        action: 'DOC_INGESTED',
+        target_resource: `doc: ${title}`,
+        details: {
+          docId: doc.id,
+          sourceType: 'url',
+          department: departmentId,
+          minimumRole,
+          chunksCount: chunks.length,
+        },
+      });
 
       return NextResponse.json({
         success: true,

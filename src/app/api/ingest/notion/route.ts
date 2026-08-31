@@ -12,7 +12,10 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const { pageId } = await req.json();
+    const body = await req.json();
+    const { pageId, department_id, minimum_role } = body || {};
+    const departmentId = (department_id as string) || 'general';
+    const minimumRole = (minimum_role as string) || 'employee';
 
     if (!pageId) {
       return NextResponse.json({ error: 'pageId is required' }, { status: 400 });
@@ -121,6 +124,21 @@ export async function POST(req: Request) {
           updated_at: new Date().toISOString(),
         })
         .eq('id', doc.id);
+
+      // Log audit event
+      await adminClient.from('audit_logs').insert({
+        actor_id: user.id,
+        actor_email: user.email,
+        action: 'DOC_INGESTED',
+        target_resource: `doc: ${title}`,
+        details: {
+          docId: doc.id,
+          sourceType: 'notion',
+          department: departmentId,
+          minimumRole,
+          chunksCount: chunks.length,
+        },
+      });
 
       return NextResponse.json({
         success: true,
